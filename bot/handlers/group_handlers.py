@@ -196,17 +196,6 @@ class GroupHandlers:
             "/users - See registered users\n"
             "/history - View recent transfers\n"
             "/help - Show this message\n\n"
-            "*Features:*\n"
-            "✅ Auto-detects transfers\n"
-            "✅ Updates balances instantly\n"
-            "✅ AI-powered understanding\n"
-            "✅ Each member starts with $1000\n\n"
-            "*⚠️ IMPORTANT:*\n"
-            "If bot doesn't respond to messages:\n"
-            "1. Message @BotFather\n"
-            "2. /mybots → Select bot\n"
-            "3. Bot Settings → Group Privacy → Turn OFF\n"
-            "4. Remove and re-add bot to group\n\n"
             "*Note:* New members get $1000 automatically!"
         )
         await update.message.reply_text(help_text, parse_mode='Markdown')
