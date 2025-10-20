@@ -4,15 +4,15 @@ import logging
 from telegram.ext import (
     Application,
     CommandHandler,
-    CallbackQueryHandler,
     MessageHandler,
-    ConversationHandler,
     filters
 )
 from bot.utils.config import BotConfig
 from bot.models.database import Database, init_database
 from bot.services.balance_service import BalanceService
-from bot.handlers.command_handlers import CommandHandlers
+from bot.services.user_service import UserService
+from bot.services.ai_service import AIService
+from bot.handlers.group_handlers import GroupHandlers
 
 logger = logging.getLogger(__name__)
 
@@ -29,53 +29,76 @@ class BotService:
         init_database(self.db)
         
         # Initialize services
-        self.balance_service = BalanceService(self.db)
-        self.handlers = CommandHandlers(self.balance_service)
+        self.user_service = UserService(self.db, config.default_balance)
+        self.balance_service = BalanceService(self.db, config.default_balance)
+        
+        # Initialize AI service if enabled
+        self.ai_service = None
+        self.group_handlers = None
+        
+        if config.enable_ai:
+            try:
+                api_key = config.get_ai_api_key()
+                self.ai_service = AIService(api_key, config.ai_model)
+                self.group_handlers = GroupHandlers(
+                    self.ai_service,
+                    self.balance_service,
+                    self.user_service
+                )
+                logger.info(f"AI service initialized with {config.ai_provider}")
+            except Exception as e:
+                logger.warning(f"AI service not available: {e}")
+                logger.info("Bot will run without AI features")
+        
         self.application = None
     
     def _setup_handlers(self):
         """Setup all command and callback handlers"""
-        # Basic command handlers
-        self.application.add_handler(CommandHandler("start", self.handlers.start))
-        self.application.add_handler(CommandHandler("balance", self.handlers.show_balance))
-        self.application.add_handler(CommandHandler("help", self.handlers.help_command))
-        self.application.add_handler(CommandHandler("reset", self.handlers.reset_balances))
-        self.application.add_handler(CommandHandler("history", self.handlers.show_history))
-        self.application.add_handler(CommandHandler("stats", self.handlers.show_stats))
         
-        # Transfer conversation handler
-        transfer_conv_handler = ConversationHandler(
-            entry_points=[CommandHandler("transfer", self.handlers.transfer_start)],
-            states={
-                CommandHandlers.TRANSFER_AMOUNT: [
-                    CallbackQueryHandler(
-                        self.handlers.transfer_direction,
-                        pattern='^transfer_'
-                    ),
-                    CallbackQueryHandler(
-                        self.handlers.cancel_transfer,
-                        pattern='^cancel$'
-                    ),
-                    MessageHandler(
-                        filters.TEXT & ~filters.COMMAND,
-                        self.handlers.transfer_amount
-                    )
-                ]
-            },
-            fallbacks=[CommandHandler("cancel", self.handlers.cancel_transfer)]
-        )
-        self.application.add_handler(transfer_conv_handler)
+        if not self.group_handlers:
+            logger.error("Group handlers not initialized! AI features required.")
+            return
         
-        # Reset confirmation handler
+        # Command handlers
         self.application.add_handler(
-            CallbackQueryHandler(
-                self.handlers.confirm_reset,
-                pattern='^(confirm_reset|cancel_reset)$'
+            CommandHandler("help", self.group_handlers.help_command)
+        )
+        self.application.add_handler(
+            CommandHandler("start", self.group_handlers.help_command)
+        )
+        self.application.add_handler(
+            CommandHandler("mybalance", self.group_handlers.show_my_balance)
+        )
+        self.application.add_handler(
+            CommandHandler("balances", self.group_handlers.show_all_balances)
+        )
+        self.application.add_handler(
+            CommandHandler("users", self.group_handlers.show_users)
+        )
+        self.application.add_handler(
+            CommandHandler("history", self.group_handlers.show_group_history)
+        )
+        
+        # Group message monitoring for auto-detection
+        self.application.add_handler(
+            MessageHandler(
+                filters.TEXT & filters.ChatType.GROUPS & ~filters.COMMAND,
+                self.group_handlers.handle_group_message
             )
         )
+        logger.info("Group message monitoring enabled")
         
         # Error handler
-        self.application.add_error_handler(self.handlers.error_handler)
+        self.application.add_error_handler(self._error_handler)
+    
+    async def _error_handler(self, update, context):
+        """Handle errors"""
+        logger.error(f"Update {update} caused error {context.error}", exc_info=context.error)
+        
+        if update and update.effective_message:
+            await update.effective_message.reply_text(
+                "❌ An error occurred. Please try again or contact support."
+            )
     
     async def post_init(self, application: Application):
         """Post initialization hook"""
@@ -83,8 +106,8 @@ class BotService:
         logger.info(f"Database: {self.config.database_url}")
         
         # Log initial state
-        users = self.balance_service.user_service.get_all()
-        logger.info(f"Loaded {len(users)} users from database")
+        user_count = self.user_service.get_user_count()
+        logger.info(f"Users in database: {user_count}")
     
     async def post_shutdown(self, application: Application):
         """Post shutdown hook"""
@@ -107,9 +130,13 @@ class BotService:
         logger.info("Setting up handlers...")
         self._setup_handlers()
         
-        logger.info("Bot is running! Press Ctrl+C to stop.")
+        logger.info("🤖 Bot is running! Add to your group and give admin access.")
+        logger.info("📝 Users will be auto-created with $1000 balance")
+        logger.info("💬 Bot will auto-detect transfer messages")
+        logger.info("Press Ctrl+C to stop.")
+        
         self.application.run_polling(
-            allowed_updates=["message", "callback_query"],
+            allowed_updates=["message"],
             drop_pending_updates=True
         )
     

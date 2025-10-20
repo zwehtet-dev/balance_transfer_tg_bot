@@ -4,7 +4,6 @@ import logging
 from dataclasses import dataclass
 from typing import Optional
 from bot.models.database import Database
-from bot.models.user import User
 from bot.models.transaction import Transaction
 from bot.services.user_service import UserService
 from bot.services.transaction_service import TransactionService
@@ -23,15 +22,31 @@ class TransferResult:
 class BalanceService:
     """Service for balance and transfer operations"""
     
-    def __init__(self, db: Database):
+    def __init__(self, db: Database, default_balance: float = 1000.0):
         self.db = db
-        self.user_service = UserService(db)
+        self.user_service = UserService(db, default_balance)
         self.transaction_service = TransactionService(db)
     
-    def transfer(self, from_name: str, to_name: str, amount: float) -> TransferResult:
+    def transfer_by_user_id(
+        self,
+        from_user_id: int,
+        to_user_id: int,
+        amount: float,
+        message_id: int = None,
+        group_id: int = None
+    ) -> TransferResult:
         """
-        Transfer amount from one user to another
-        Returns: TransferResult with success status and message
+        Transfer amount between users by their internal IDs
+        
+        Args:
+            from_user_id: Internal user ID of sender
+            to_user_id: Internal user ID of receiver
+            amount: Amount to transfer
+            message_id: Telegram message ID (optional)
+            group_id: Telegram group ID (optional)
+        
+        Returns:
+            TransferResult with success status and message
         """
         try:
             # Validation
@@ -39,23 +54,23 @@ class BalanceService:
                 return TransferResult(False, "❌ Transfer amount must be positive!")
             
             # Get users
-            from_user = self.user_service.get_by_name(from_name)
-            to_user = self.user_service.get_by_name(to_name)
+            from_user = self.user_service.get_by_id(from_user_id)
+            to_user = self.user_service.get_by_id(to_user_id)
             
             if not from_user:
-                return TransferResult(False, f"❌ User {from_name} not found!")
+                return TransferResult(False, f"❌ Sender not found!")
             
             if not to_user:
-                return TransferResult(False, f"❌ User {to_name} not found!")
+                return TransferResult(False, f"❌ Receiver not found!")
             
             if from_user.id == to_user.id:
-                return TransferResult(False, "❌ Cannot transfer to the same user!")
+                return TransferResult(False, "❌ Cannot transfer to yourself!")
             
             if not from_user.can_debit(amount):
                 return TransferResult(
                     False,
                     f"❌ Insufficient funds! "
-                    f"{User.format_name(from_name)} has ${from_user.balance:.2f}"
+                    f"{from_user.display_name} has ${from_user.balance:.2f}"
                 )
             
             # Perform transfer (atomic operation)
@@ -72,17 +87,20 @@ class BalanceService:
                 to_user_id=to_user.id,
                 amount=amount,
                 balance_from=new_balance_from,
-                balance_to=new_balance_to
+                balance_to=new_balance_to,
+                message_id=message_id,
+                group_id=group_id
             )
             
             message = (
                 f"✅ Transfer successful!\n\n"
-                f"💸 ${amount:.2f} transferred from "
-                f"{User.format_name(from_name)} to "
-                f"{User.format_name(to_name)}"
+                f"💸 ${amount:.2f} from {from_user.display_name} to {to_user.display_name}"
             )
             
-            logger.info(f"Transfer: {from_name} -> {to_name}, amount: ${amount:.2f}")
+            logger.info(
+                f"Transfer: {from_user.display_name} -> {to_user.display_name}, "
+                f"amount: ${amount:.2f}"
+            )
             return TransferResult(True, message, transaction)
             
         except Exception as e:
@@ -96,13 +114,18 @@ class BalanceService:
         if not users:
             return "❌ No users found in the system."
         
+        # Sort by balance descending
+        users.sort(key=lambda u: u.balance, reverse=True)
+        
         total = sum(user.balance for user in users)
         
-        balance_text = "💰 Current Balances:\n\n"
-        for user in users:
-            balance_text += f"👤 {User.format_name(user.name)}: ${user.balance:.2f}\n"
+        balance_text = "💰 All Balances:\n\n"
+        for i, user in enumerate(users, 1):
+            balance_text += f"{i}. {user.display_name}: ${user.balance:.2f}\n"
         
         balance_text += f"\n📊 Total: ${total:.2f}"
+        balance_text += f"\n👥 Users: {len(users)}"
+        
         return balance_text
     
     def get_transaction_history(self, limit: int = 10) -> str:
@@ -118,13 +141,7 @@ class BalanceService:
         
         return history
     
-    def reset_all_balances(self, default_balance: float = 1000.0):
-        """Reset all user balances to default"""
-        self.user_service.reset_all_balances(default_balance)
-        self.transaction_service.delete_all()
-        logger.info(f"Reset all balances to ${default_balance:.2f}")
-    
-    def get_balance(self, name: str) -> float:
-        """Get balance for a specific user"""
-        user = self.user_service.get_by_name(name)
-        return user.balance if user else 0.0
+    def get_user_balance(self, telegram_user_id: int) -> Optional[float]:
+        """Get balance for a specific Telegram user"""
+        user = self.user_service.get_by_telegram_id(telegram_user_id)
+        return user.balance if user else None

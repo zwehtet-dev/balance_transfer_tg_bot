@@ -76,15 +76,18 @@ class Database:
 
 
 def init_database(db: Database):
-    """Initialize database schema"""
+    """Initialize database schema for group-based bot"""
     logger.info("Initializing database schema...")
     
-    # Create users table
+    # Create users table with Telegram user info
     db.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL,
-            balance REAL NOT NULL DEFAULT 0.0,
+            telegram_user_id INTEGER UNIQUE NOT NULL,
+            username TEXT,
+            first_name TEXT,
+            last_name TEXT,
+            balance REAL NOT NULL DEFAULT 1000.0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -99,6 +102,8 @@ def init_database(db: Database):
             amount REAL NOT NULL,
             balance_from REAL NOT NULL,
             balance_to REAL NOT NULL,
+            message_id INTEGER,
+            group_id INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (from_user_id) REFERENCES users(id),
             FOREIGN KEY (to_user_id) REFERENCES users(id)
@@ -106,6 +111,11 @@ def init_database(db: Database):
     """)
     
     # Create indexes
+    db.execute("""
+        CREATE INDEX IF NOT EXISTS idx_users_telegram_id 
+        ON users(telegram_user_id)
+    """)
+    
     db.execute("""
         CREATE INDEX IF NOT EXISTS idx_transactions_from_user 
         ON transactions(from_user_id)
@@ -121,24 +131,4 @@ def init_database(db: Database):
         ON transactions(created_at DESC)
     """)
     
-    # Initialize default users if they don't exist
-    _initialize_default_users(db)
-    
     logger.info("Database schema initialized successfully")
-
-
-def _initialize_default_users(db: Database):
-    """Initialize default users (Person A and Person B)"""
-    default_users = [
-        ('person_a', 1000.0),
-        ('person_b', 1000.0)
-    ]
-    
-    for name, balance in default_users:
-        existing = db.fetchone("SELECT id FROM users WHERE name = ?", (name,))
-        if not existing:
-            db.execute(
-                "INSERT INTO users (name, balance) VALUES (?, ?)",
-                (name, balance)
-            )
-            logger.info(f"Created default user: {name} with balance ${balance:.2f}")

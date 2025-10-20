@@ -20,16 +20,18 @@ class TransactionService:
         to_user_id: int,
         amount: float,
         balance_from: float,
-        balance_to: float
+        balance_to: float,
+        message_id: int = None,
+        group_id: int = None
     ) -> Transaction:
         """Create a new transaction"""
         cursor = self.db.execute(
             """
             INSERT INTO transactions 
-            (from_user_id, to_user_id, amount, balance_from, balance_to)
-            VALUES (?, ?, ?, ?, ?)
+            (from_user_id, to_user_id, amount, balance_from, balance_to, message_id, group_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (from_user_id, to_user_id, amount, balance_from, balance_to)
+            (from_user_id, to_user_id, amount, balance_from, balance_to, message_id, group_id)
         )
         transaction_id = cursor.lastrowid
         logger.info(
@@ -43,8 +45,10 @@ class TransactionService:
         row = self.db.fetchone(
             """
             SELECT t.*, 
-                   u1.name as from_user_name,
-                   u2.name as to_user_name
+                   u1.username as from_username,
+                   u1.first_name as from_first_name,
+                   u2.username as to_username,
+                   u2.first_name as to_first_name
             FROM transactions t
             JOIN users u1 ON t.from_user_id = u1.id
             JOIN users u2 ON t.to_user_id = u2.id
@@ -59,8 +63,10 @@ class TransactionService:
         rows = self.db.fetchall(
             """
             SELECT t.*, 
-                   u1.name as from_user_name,
-                   u2.name as to_user_name
+                   u1.username as from_username,
+                   u1.first_name as from_first_name,
+                   u2.username as to_username,
+                   u2.first_name as to_first_name
             FROM transactions t
             JOIN users u1 ON t.from_user_id = u1.id
             JOIN users u2 ON t.to_user_id = u2.id
@@ -76,8 +82,10 @@ class TransactionService:
         rows = self.db.fetchall(
             """
             SELECT t.*, 
-                   u1.name as from_user_name,
-                   u2.name as to_user_name
+                   u1.username as from_username,
+                   u1.first_name as from_first_name,
+                   u2.username as to_username,
+                   u2.first_name as to_first_name
             FROM transactions t
             JOIN users u1 ON t.from_user_id = u1.id
             JOIN users u2 ON t.to_user_id = u2.id
@@ -88,11 +96,6 @@ class TransactionService:
             (user_id, user_id, limit)
         )
         return [self._row_to_transaction(row) for row in rows]
-    
-    def delete_all(self):
-        """Delete all transactions"""
-        self.db.execute("DELETE FROM transactions")
-        logger.info("Deleted all transactions")
     
     def get_count(self) -> int:
         """Get total transaction count"""
@@ -109,6 +112,15 @@ class TransactionService:
     
     def _row_to_transaction(self, row) -> Transaction:
         """Convert database row to Transaction object"""
+        # Get display names
+        from_username = self._get_row_value(row, 'from_username')
+        from_first_name = self._get_row_value(row, 'from_first_name')
+        to_username = self._get_row_value(row, 'to_username')
+        to_first_name = self._get_row_value(row, 'to_first_name')
+        
+        from_display = f"@{from_username}" if from_username else from_first_name or "Unknown"
+        to_display = f"@{to_username}" if to_username else to_first_name or "Unknown"
+        
         return Transaction(
             id=row['id'],
             from_user_id=row['from_user_id'],
@@ -117,6 +129,6 @@ class TransactionService:
             balance_from=row['balance_from'],
             balance_to=row['balance_to'],
             created_at=row['created_at'],
-            from_user_name=self._get_row_value(row, 'from_user_name'),
-            to_user_name=self._get_row_value(row, 'to_user_name')
+            from_user_name=from_display,
+            to_user_name=to_display
         )

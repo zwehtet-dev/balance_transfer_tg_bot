@@ -2,6 +2,54 @@
 
 All notable changes to the Balance Transfer Bot.
 
+## [2.1.0] - 2024-10-20
+
+### 🚀 Major Feature - AI Integration
+
+Added AI-powered features using LangChain and Mistral AI!
+
+### Added - AI Features
+- ✨ **Natural Language Commands** - Users can send commands in plain English
+  - "send 100 to @alice" → Executes transfer
+  - "check my balance" → Shows balance
+  - "show my transactions" → Shows history
+- ✨ **Group Transfer Detection** - Auto-detect transfers in group chats
+  - "@alice I sent you $50" → Auto-records transfer
+  - Monitors group messages for transfer announcements
+- ✨ **AI-Generated Responses** - Natural, conversational responses
+- ✨ **LangChain Integration** - Structured output parsing
+- ✨ **Mistral AI Support** - Free tier available
+- ✨ **OpenAI Support** - Alternative AI provider
+
+### Added - Services
+- `bot/services/ai_service.py` - AI service using LangChain
+- `bot/handlers/ai_handlers.py` - AI-powered command handlers
+
+### Added - Configuration
+- `AI_PROVIDER` - Choose between mistral or openai
+- `MISTRAL_API_KEY` - Mistral AI API key
+- `AI_MODEL` - AI model to use
+- `ENABLE_AI` - Enable/disable AI features
+- `MONITOR_GROUPS` - Enable group monitoring
+- `AUTO_DETECT_TRANSFERS` - Auto-detect transfers in groups
+
+### Added - Documentation
+- `AI_FEATURES.md` - Comprehensive AI features documentation
+- `SETUP_AI.md` - Quick setup guide for AI features
+
+### Updated
+- `requirements.txt` - Added langchain and langchain-mistralai
+- `bot/utils/config.py` - Added AI configuration options
+- `bot/services/bot_service.py` - Integrated AI handlers
+- `.env.example` - Added AI configuration examples
+
+### Dependencies
+- langchain==0.1.0
+- langchain-mistralai==0.0.5
+- langchain-openai==0.0.5
+
+---
+
 ## [2.0.1] - 2024-10-20
 
 ### Fixed

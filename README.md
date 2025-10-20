@@ -13,6 +13,9 @@ A professional, scalable Telegram bot for managing balance transfers with SQLite
 - 🔒 Insufficient funds protection
 - 📈 Statistics and analytics
 - 🏗️ Scalable architecture
+- 🤖 **AI-Powered Natural Language Commands** (NEW!)
+- 🎯 **Auto-Detect Transfers in Groups** (NEW!)
+- 💬 **Conversational AI Responses** (NEW!)
 
 ## 📁 Project Structure
 
@@ -90,15 +93,27 @@ python -m bot.main
 
 ## 📝 Available Commands
 
+### Traditional Commands
 | Command | Description |
 |---------|-------------|
 | `/start` | Welcome message and command list |
 | `/balance` | Check current balances |
 | `/transfer` | Transfer money between users |
 | `/history` | View recent transactions |
-| `/stats` | View bot statistics (NEW!) |
+| `/stats` | View bot statistics |
 | `/reset` | Reset all balances to default |
 | `/help` | Show detailed help |
+
+### AI-Powered Natural Language (NEW!)
+Just talk naturally to the bot:
+- "send 100 to @alice" → Executes transfer
+- "check my balance" → Shows balance
+- "show my transactions" → Shows history
+
+### Group Auto-Detection (NEW!)
+Bot monitors group chats:
+- "@alice I sent you $50" → Auto-records transfer
+- "Transferred 75 to @bob" → Auto-records transfer
 
 ## 🗄️ Database Schema
 
@@ -288,14 +303,24 @@ docker-compose down
 ## 📚 Documentation
 
 - **README.md** - This file (main documentation)
+- **AI_FEATURES.md** - AI features documentation (NEW!)
+- **SETUP_AI.md** - Quick AI setup guide (NEW!)
 - **QUICK_REFERENCE.md** - Quick reference card
 - **MIGRATION_GUIDE.md** - Migration guide from older versions
 - **PROJECT_STRUCTURE_V2.txt** - Detailed structure overview
 - **V2_SUMMARY.md** - Version 2.0 summary
 - **CHANGELOG.md** - Version history
 
-## 🚦 What's New in v2.0
+## 🚦 What's New
 
+### v2.1.0 (Latest) - AI Integration
+- 🤖 **Natural Language Commands** - Talk to bot naturally
+- 🎯 **Group Transfer Detection** - Auto-detect transfers in groups
+- 💬 **AI-Generated Responses** - Conversational responses
+- 🔗 **LangChain Integration** - Powered by LangChain
+- 🌟 **Mistral AI Support** - Free tier available!
+
+### v2.0.0 - Complete Restructure
 - ✅ **SQLite Database** - Replaced JSON with proper database
 - ✅ **Scalable Architecture** - Modular design with clear separation
 - ✅ **Service Layer** - Clean business logic separation
