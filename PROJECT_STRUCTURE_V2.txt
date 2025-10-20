@@ -1,0 +1,310 @@
+Balance Transfer Telegram Bot v2.0 - Project Structure
+=======================================================
+
+telegram_bot/
+│
+├── bot/                           # Main application package
+│   ├── __init__.py               # Package initialization (v2.0.0)
+│   ├── main.py                   # Application entry point
+│   │
+│   ├── models/                   # Data models & database layer
+│   │   ├── __init__.py          # Models package exports
+│   │   ├── database.py          # Database connection & schema
+│   │   ├── user.py              # User domain model
+│   │   └── transaction.py       # Transaction domain model
+│   │
+│   ├── services/                 # Business logic layer
+│   │   ├── __init__.py          # Services package exports
+│   │   ├── user_service.py      # User CRUD operations
+│   │   ├── transaction_service.py # Transaction operations
+│   │   ├── balance_service.py   # Balance & transfer logic
+│   │   └── bot_service.py       # Main bot orchestration
+│   │
+│   ├── handlers/                 # Telegram command handlers
+│   │   ├── __init__.py          # Handlers package exports
+│   │   └── command_handlers.py  # All bot command handlers
+│   │
+│   └── utils/                    # Utility modules
+│       ├── __init__.py          # Utils package exports
+│       ├── config.py            # Configuration management
+│       └── logger.py            # Logging setup
+│
+├── tests/                        # Test suite
+│   ├── __init__.py
+│   ├── test_balance_service.py  # Balance service tests
+│   ├── test_user_service.py     # User service tests
+│   ├── test_models.py           # Model tests (v1.0)
+│   └── test_services.py         # Service tests (v1.0)
+│
+├── data/                         # Data directory (created at runtime)
+│   └── bot.db                   # SQLite database
+│
+├── logs/                         # Log directory (created at runtime)
+│   └── bot.log                  # Application logs
+│
+├── balance_bot/                  # Old v1.0 structure (deprecated)
+│   └── ...                      # Legacy files
+│
+├── .env                          # Environment variables (not in git)
+├── .env.example                  # Environment template
+├── .gitignore                    # Git exclusions
+│
+├── requirements.txt              # Python dependencies
+├── setup.sh                      # Automated setup script
+├── run.py                        # Convenience runner
+├── Makefile                      # Common commands
+│
+├── README.md                     # Original documentation
+├── README_V2.md                  # v2.0 documentation
+├── QUICKSTART.md                 # Quick start guide
+├── ARCHITECTURE.md               # v1.0 architecture
+├── MIGRATION_GUIDE.md            # v1.0 → v2.0 migration
+├── IMPROVEMENTS.md               # v1.0 improvements
+├── CHANGELOG.md                  # Version history
+└── PROJECT_STRUCTURE_V2.txt      # This file
+
+═══════════════════════════════════════════════════════════
+
+📊 File Statistics (v2.0):
+═══════════════════════════════════════════════════════════
+
+Core Application:
+  bot/main.py                    ~50 lines   - Entry point
+  bot/models/database.py         ~150 lines  - Database layer
+  bot/models/user.py             ~30 lines   - User model
+  bot/models/transaction.py      ~40 lines   - Transaction model
+  bot/services/user_service.py   ~80 lines   - User operations
+  bot/services/transaction_service.py ~120 lines - Transaction ops
+  bot/services/balance_service.py ~100 lines  - Business logic
+  bot/services/bot_service.py    ~100 lines  - Bot orchestration
+  bot/handlers/command_handlers.py ~200 lines - Command handlers
+  bot/utils/config.py            ~50 lines   - Configuration
+  bot/utils/logger.py            ~40 lines   - Logging setup
+
+Total Core: ~960 lines of production code
+
+Tests:
+  tests/test_balance_service.py  ~80 lines
+  tests/test_user_service.py     ~70 lines
+
+Total Tests: ~150 lines
+
+═══════════════════════════════════════════════════════════
+
+🏗️ Architecture Layers:
+═══════════════════════════════════════════════════════════
+
+Layer 1: Presentation (Handlers)
+  └── bot/handlers/command_handlers.py
+      ├── Telegram command handlers
+      ├── User interaction
+      ├── Message formatting
+      └── Conversation flows
+
+Layer 2: Business Logic (Services)
+  └── bot/services/
+      ├── balance_service.py      - Transfer logic
+      ├── user_service.py         - User management
+      ├── transaction_service.py  - Transaction tracking
+      └── bot_service.py          - Application orchestration
+
+Layer 3: Domain Models
+  └── bot/models/
+      ├── user.py                 - User entity
+      ├── transaction.py          - Transaction entity
+      └── database.py             - Database abstraction
+
+Layer 4: Data Storage
+  └── SQLite Database (data/bot.db)
+      ├── users table
+      ├── transactions table
+      └── indexes
+
+═══════════════════════════════════════════════════════════
+
+🗄️ Database Schema:
+═══════════════════════════════════════════════════════════
+
+users
+  ├── id (INTEGER PRIMARY KEY)
+  ├── name (TEXT UNIQUE)
+  ├── balance (REAL)
+  ├── created_at (TIMESTAMP)
+  └── updated_at (TIMESTAMP)
+
+transactions
+  ├── id (INTEGER PRIMARY KEY)
+  ├── from_user_id (INTEGER FK)
+  ├── to_user_id (INTEGER FK)
+  ├── amount (REAL)
+  ├── balance_from (REAL)
+  ├── balance_to (REAL)
+  └── created_at (TIMESTAMP)
+
+indexes
+  ├── idx_transactions_from_user
+  ├── idx_transactions_to_user
+  └── idx_transactions_created_at
+
+═══════════════════════════════════════════════════════════
+
+🔄 Data Flow Example (Transfer):
+═══════════════════════════════════════════════════════════
+
+1. User sends /transfer
+   ↓
+2. CommandHandlers.transfer_start()
+   - Shows direction selection
+   ↓
+3. User selects direction
+   ↓
+4. CommandHandlers.transfer_direction()
+   - Stores context, requests amount
+   ↓
+5. User enters amount
+   ↓
+6. CommandHandlers.transfer_amount()
+   - Parses input
+   - Calls BalanceService.transfer()
+   ↓
+7. BalanceService.transfer()
+   - Validates amount
+   - Gets users via UserService
+   - Checks balance
+   - Updates balances via UserService
+   - Creates transaction via TransactionService
+   ↓
+8. UserService.update_balance()
+   - Executes SQL UPDATE
+   ↓
+9. TransactionService.create()
+   - Executes SQL INSERT
+   ↓
+10. Returns TransferResult
+   ↓
+11. Handler formats and sends response
+
+═══════════════════════════════════════════════════════════
+
+🚀 Key Improvements in v2.0:
+═══════════════════════════════════════════════════════════
+
+✅ SQLite Database
+   - Persistent, reliable storage
+   - ACID transactions
+   - Indexed queries
+
+✅ Scalable Architecture
+   - Clear separation of concerns
+   - Service layer pattern
+   - Repository pattern
+
+✅ Enhanced Performance
+   - Database indexes
+   - Efficient queries
+   - Connection pooling
+
+✅ Better Testing
+   - Isolated test database
+   - Comprehensive test coverage
+   - Mock-friendly design
+
+✅ Production Ready
+   - Robust error handling
+   - Structured logging
+   - Configuration management
+
+✅ New Features
+   - /stats command
+   - Unlimited transaction history
+   - Better query capabilities
+
+═══════════════════════════════════════════════════════════
+
+📦 Dependencies:
+═══════════════════════════════════════════════════════════
+
+Production:
+  - python-telegram-bot==20.7
+  - python-dotenv==1.0.0
+
+Development:
+  - pytest==7.4.3
+  - pytest-asyncio==0.21.1
+  - pytest-cov==4.1.0
+  - pytest-mock==3.12.0
+
+═══════════════════════════════════════════════════════════
+
+🎯 Design Patterns:
+═══════════════════════════════════════════════════════════
+
+1. Service Layer Pattern
+   - Business logic in services
+   - Reusable across interfaces
+
+2. Repository Pattern
+   - Data access abstraction
+   - UserService, TransactionService
+
+3. Dependency Injection
+   - Services receive dependencies
+   - Easy testing and mocking
+
+4. Result Object Pattern
+   - TransferResult for operations
+   - Rich return values
+
+5. Factory Pattern
+   - Database initialization
+   - Model creation
+
+═══════════════════════════════════════════════════════════
+
+🔧 Configuration:
+═══════════════════════════════════════════════════════════
+
+Environment Variables:
+  TELEGRAM_BOT_TOKEN     - Bot token (required)
+  DATABASE_URL           - SQLite database path
+  DEFAULT_BALANCE        - Initial user balance
+  MAX_TRANSACTION_HISTORY - History limit
+  LOG_LEVEL              - Logging level
+  LOG_FILE               - Log file path
+
+═══════════════════════════════════════════════════════════
+
+📝 Bot Commands:
+═══════════════════════════════════════════════════════════
+
+/start      - Welcome message
+/balance    - Check balances
+/transfer   - Transfer money
+/history    - View transactions
+/stats      - View statistics (NEW in v2.0)
+/reset      - Reset balances
+/help       - Show help
+
+═══════════════════════════════════════════════════════════
+
+🎓 Best Practices Applied:
+═══════════════════════════════════════════════════════════
+
+✅ SOLID Principles
+✅ Clean Architecture
+✅ Database Normalization
+✅ SQL Injection Prevention
+✅ Error Handling
+✅ Logging Strategy
+✅ Configuration Management
+✅ Test-Driven Development
+✅ Documentation
+✅ Version Control
+
+═══════════════════════════════════════════════════════════
+
+Version: 2.0.0
+Database: SQLite
+Python: 3.8+
+Framework: python-telegram-bot 20.7
+Architecture: Layered, Service-Oriented
